@@ -1,12 +1,14 @@
 package main
 
 import (
-	"github.com/Brandon-Butterbaugh/gator.git/internal/config"
+	"fmt"
+
+	"github.com/Brandon-Butterbaugh/gator/internal/config"
 )
 
 func main() {
 	cfg := config.Read()
 	cfg.SetUser("Brandon")
 	cfg = config.Read()
-	println(cfg)
+	fmt.Println(cfg)
 }

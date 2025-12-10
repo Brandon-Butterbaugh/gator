@@ -63,7 +63,7 @@ func getConfigFilePath() (string, error) {
 	}
 
 	// Add working directory and file name to string
-	path := home + "/workspace/gator" + configFileName
+	path := home + "/workspace/gator/" + configFileName
 
 	return path, nil
 }
