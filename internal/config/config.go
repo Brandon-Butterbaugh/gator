@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"path/filepath"
 )
 
-const configFileName = "/.gatorconfig.json"
+const configFileName = ".gatorconfig.json"
 
 type Config struct {
 	DbURL           string `json:"db_url"`
@@ -64,7 +65,7 @@ func getConfigFilePath() (string, error) {
 	}
 
 	// Add working directory and file name to string
-	path := home + configFileName
+	path := filepath.Join(home, configFileName)
 
 	return path, nil
 }
