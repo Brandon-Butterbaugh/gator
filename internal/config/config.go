@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-const configFileName = ".gatorconfig.json"
+const configFileName = "/.gatorconfig.json"
 
 type Config struct {
 	DbURL           string `json:"db_url"`
@@ -41,7 +41,7 @@ func Read() Config {
 	return cfg
 }
 
-func (cfg *Config) SetUser(name string) {
+func (cfg *Config) SetUser(name string) error {
 	// Set name in Config
 	cfg.CurrentUserName = name
 
@@ -49,9 +49,10 @@ func (cfg *Config) SetUser(name string) {
 	err := write(*cfg)
 	if err != nil {
 		log.Fatalf("Error writing to file: %v\n", err)
-		return
+		return err
 	}
 
+	return err
 }
 
 func getConfigFilePath() (string, error) {
@@ -63,7 +64,7 @@ func getConfigFilePath() (string, error) {
 	}
 
 	// Add working directory and file name to string
-	path := home + "/workspace/gator/" + configFileName
+	path := home + configFileName
 
 	return path, nil
 }
