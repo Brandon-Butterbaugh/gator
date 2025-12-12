@@ -1,0 +1,117 @@
+package main
+
+import (
+	"context"
+	"encoding/xml"
+	"fmt"
+	"html"
+	"io"
+	"log"
+	"net/http"
+	"time"
+)
+
+type RSSFeed struct {
+	Channel struct {
+		Title       string    `xml:"title"`
+		Link        string    `xml:"link"`
+		Description string    `xml:"description"`
+		Item        []RSSItem `xml:"item"`
+	} `xml:"channel"`
+}
+
+type RSSItem struct {
+	Title       string `xml:"title"`
+	Link        string `xml:"link"`
+	Description string `xml:"description"`
+	PubDate     string `xml:"pubDate"`
+}
+
+func handlerAgg(s *state, cmd command) error {
+	// Get the feed
+	feed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	if err != nil {
+		log.Fatalf("error fetching feed")
+	}
+
+	// Print the feed
+	printFeed(feed)
+
+	return nil
+}
+
+func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
+	// Make client and blank feed
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+	feed := &RSSFeed{}
+
+	// Make request
+	req, err := http.NewRequestWithContext(ctx, "GET", feedURL, nil)
+	if err != nil {
+		log.Fatalf("error making request")
+	}
+
+	// Set header to identify program
+	req.Header.Set("User-Agent", "gator")
+
+	// Do the request
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatalf("error getting response")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("Status error: %v", resp.StatusCode)
+	}
+
+	// Read the response
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalf("Read body error: %v", err)
+	}
+
+	// Unmarshal the response
+	err = xml.Unmarshal(bodyBytes, feed)
+	if err != nil {
+		log.Fatalf("xml unmarhsal error: %v", err)
+	}
+
+	// Unescape the feed and the items
+	unescapeFeed(feed)
+	for i := range feed.Channel.Item {
+		unescapeItem(&feed.Channel.Item[i])
+	}
+
+	return feed, nil
+}
+
+func unescapeFeed(feed *RSSFeed) {
+	feed.Channel.Title = html.UnescapeString(feed.Channel.Title)
+	feed.Channel.Description = html.UnescapeString(feed.Channel.Description)
+}
+
+func unescapeItem(item *RSSItem) {
+	item.Title = html.UnescapeString(item.Title)
+	item.Description = html.UnescapeString(item.Description)
+}
+
+func printFeed(feed *RSSFeed) {
+	fmt.Printf(" - Channel: \n")
+	fmt.Printf("   * Title:       %v\n", feed.Channel.Title)
+	fmt.Printf("   * Link:        %v\n", feed.Channel.Link)
+	fmt.Printf("   * Description: %v\n", feed.Channel.Description)
+	for _, item := range feed.Channel.Item {
+		fmt.Printf("   - Item: \n")
+		printItem(&item)
+	}
+}
+
+func printItem(item *RSSItem) {
+	fmt.Printf("     * Title:       %v\n", item.Title)
+	fmt.Printf("     * Link:        %v\n", item.Link)
+	fmt.Printf("     * Description: %v\n", item.Description)
+	fmt.Printf("     * PubDate:     %v\n", item.PubDate)
+	fmt.Println()
+}
