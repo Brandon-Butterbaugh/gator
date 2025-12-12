@@ -44,16 +44,10 @@ func handlerAgg(s *state, cmd command) error {
 	return nil
 }
 
-func handlerAddFeed(s *state, cmd command) error {
+func handlerAddFeed(s *state, cmd command, user database.User) error {
 	// Check amount of arguments
 	if len(cmd.Args) != 2 {
 		return errors.New("invalid amount of arguments for adding a feed")
-	}
-
-	// Get current user
-	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
-	if err != nil {
-		return err
 	}
 
 	// Create new feed
@@ -70,6 +64,22 @@ func handlerAddFeed(s *state, cmd command) error {
 	)
 	if err != nil {
 		return err
+	}
+
+	// Create follow
+	// Create feed follow
+	_, err = s.db.CreateFeedFollow(
+		context.Background(),
+		database.CreateFeedFollowParams{
+			ID:        uuid.New(),
+			CreatedAt: time.Now().UTC(),
+			UpdatedAt: time.Now().UTC(),
+			UserID:    user.ID,
+			FeedID:    feed.ID,
+		},
+	)
+	if err != nil {
+		log.Fatalf("error creating follow")
 	}
 
 	fmt.Print(feed)
@@ -97,6 +107,7 @@ func handlerFeeds(s *state, cmd command) error {
 		fmt.Println(user.Name)
 
 	}
+
 	return nil
 }
 
