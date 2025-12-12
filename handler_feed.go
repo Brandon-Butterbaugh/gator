@@ -76,6 +76,30 @@ func handlerAddFeed(s *state, cmd command) error {
 	return nil
 }
 
+func handlerFeeds(s *state, cmd command) error {
+	// Get feeds
+	feeds, err := s.db.GetFeeds(context.Background())
+	if err != nil {
+		log.Fatalf("error getting feeds from database")
+	}
+
+	// Print feeds and get user names
+	for _, feed := range feeds {
+		user, err := s.db.GetUserByID(context.Background(), feed.UserID)
+		if err != nil {
+			log.Fatalf("error getting user %v from database", feed.UserID)
+		}
+		fmt.Println(feed.ID)
+		fmt.Println(feed.CreatedAt)
+		fmt.Println(feed.UpdatedAt)
+		fmt.Println(feed.Name)
+		fmt.Println(feed.Url)
+		fmt.Println(user.Name)
+
+	}
+	return nil
+}
+
 func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 	// Make client and blank feed
 	client := &http.Client{
