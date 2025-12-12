@@ -3,12 +3,16 @@ package main
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"html"
 	"io"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/Brandon-Butterbaugh/gator/internal/database"
+	"github.com/google/uuid"
 )
 
 type RSSFeed struct {
@@ -37,6 +41,38 @@ func handlerAgg(s *state, cmd command) error {
 	// Print the feed
 	printFeed(feed)
 
+	return nil
+}
+
+func handlerAddFeed(s *state, cmd command) error {
+	// Check amount of arguments
+	if len(cmd.Args) != 2 {
+		return errors.New("invalid amount of arguments for adding a feed")
+	}
+
+	// Get current user
+	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
+	if err != nil {
+		return err
+	}
+
+	// Create new feed
+	feed, err := s.db.CreateFeed(
+		context.Background(),
+		database.CreateFeedParams{
+			ID:        uuid.New(),
+			CreatedAt: time.Now().UTC(),
+			UpdatedAt: time.Now().UTC(),
+			Name:      cmd.Args[0],
+			Url:       cmd.Args[1],
+			UserID:    user.ID,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	fmt.Print(feed)
 	return nil
 }
 
