@@ -237,22 +237,3 @@ func unescapeItem(item *RSSItem) {
 	item.Title = html.UnescapeString(item.Title)
 	item.Description = html.UnescapeString(item.Description)
 }
-
-func printFeed(feed *RSSFeed) {
-	fmt.Printf(" - Channel: \n")
-	fmt.Printf("   * Title:       %v\n", feed.Channel.Title)
-	fmt.Printf("   * Link:        %v\n", feed.Channel.Link)
-	fmt.Printf("   * Description: %v\n", feed.Channel.Description)
-	for _, item := range feed.Channel.Item {
-		fmt.Printf("   - Item: \n")
-		printItem(&item)
-	}
-}
-
-func printItem(item *RSSItem) {
-	fmt.Printf("     * Title:       %v\n", item.Title)
-	fmt.Printf("     * Link:        %v\n", item.Link)
-	fmt.Printf("     * Description: %v\n", item.Description)
-	fmt.Printf("     * PubDate:     %v\n", item.PubDate)
-	fmt.Println()
-}
