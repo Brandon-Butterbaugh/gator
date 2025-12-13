@@ -55,3 +55,30 @@ func handlerFollowing(s *state, cmd command, user database.User) error {
 	}
 	return nil
 }
+
+func handlerUnfollow(s *state, cmd command, user database.User) error {
+	// Check amount of arguments
+	if len(cmd.Args) != 1 {
+		return errors.New("invalid amount of arguments for unfollowing")
+	}
+
+	// Get feed
+	feed, err := s.db.GetFeed(context.Background(), cmd.Args[0])
+	if err != nil {
+		log.Fatalf("error finding feed with url")
+	}
+
+	// Delete follow
+	err = s.db.DeleteFollow(
+		context.Background(),
+		database.DeleteFollowParams{
+			UserID: user.ID,
+			FeedID: feed.ID,
+		},
+	)
+	if err != nil {
+		log.Fatalf("error deleting follow")
+	}
+
+	return nil
+}

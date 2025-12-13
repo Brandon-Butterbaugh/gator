@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/Brandon-Butterbaugh/gator/internal/database"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type RSSFeed struct {
@@ -32,16 +34,85 @@ type RSSItem struct {
 }
 
 func handlerAgg(s *state, cmd command) error {
-	// Get the feed
-	feed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	// Check amount of arguments
+	if len(cmd.Args) != 1 {
+		return errors.New("invalid amount of arguments for agg")
+	}
+
+	// Parse arg into time.Duration
+	timeBetweenRequests, err := time.ParseDuration(cmd.Args[0])
+	if err != nil {
+		log.Fatalf("error parsing time argument")
+	}
+	log.Printf("Collecting feeds every %s...", timeBetweenRequests)
+
+	ticker := time.NewTicker(timeBetweenRequests)
+
+	for ; ; <-ticker.C {
+		scrapeFeeds(s)
+	}
+}
+
+func scrapeFeeds(s *state) {
+	// Get next feed to fetch
+	feed, err := s.db.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		log.Fatalf("error getting next feed")
+	}
+
+	// Mark feed as fetched
+	err = s.db.MarkFeedFetched(context.Background(), feed.ID)
+	if err != nil {
+		log.Fatalf("error marking feed as fetched")
+	}
+
+	// Fetch the feed
+	rssFeed, err := fetchFeed(context.Background(), feed.Url)
 	if err != nil {
 		log.Fatalf("error fetching feed")
 	}
 
-	// Print the feed
-	printFeed(feed)
+	// Add items to posts
+	for _, item := range rssFeed.Channel.Item {
+		// Make sure not null variables can be put into database
+		publishedAt := sql.NullTime{}
+		if t, err := time.Parse(time.RFC1123Z, item.PubDate); err == nil {
+			publishedAt = sql.NullTime{
+				Time:  t,
+				Valid: true,
+			}
+		}
 
-	return nil
+		_, err = s.db.CreatePosts(
+			context.Background(),
+			database.CreatePostsParams{
+				ID:        uuid.New(),
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+				Title:     item.Title,
+				Url:       item.Link,
+				Description: sql.NullString{
+					String: item.Description,
+					Valid:  true,
+				},
+				PublishedAt: publishedAt,
+				FeedID:      feed.ID,
+			},
+		)
+		if err != nil {
+			// ignore duplicate urls
+			var pqErr *pq.Error
+			if errors.As(err, &pqErr) {
+				if pqErr.Code != "23505" {
+					fmt.Print(err)
+					log.Printf("error creating post: %v", err)
+					continue
+				}
+			}
+		}
+	}
+
+	log.Printf("Feed %s collected, %v posts found", feed.Name, len(rssFeed.Channel.Item))
 }
 
 func handlerAddFeed(s *state, cmd command, user database.User) error {
@@ -66,7 +137,6 @@ func handlerAddFeed(s *state, cmd command, user database.User) error {
 		return err
 	}
 
-	// Create follow
 	// Create feed follow
 	_, err = s.db.CreateFeedFollow(
 		context.Background(),

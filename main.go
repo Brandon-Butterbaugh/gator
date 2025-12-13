@@ -23,8 +23,7 @@ func middlewareLoggedIn(handler func(s *state, cmd command, user database.User) 
 			return err
 		}
 
-		handler(s, cmd, user)
-		return nil
+		return handler(s, cmd, user)
 	}
 }
 
@@ -57,6 +56,8 @@ func main() {
 	cmds.register("feeds", handlerFeeds)
 	cmds.register("follow", middlewareLoggedIn(handlerFollow))
 	cmds.register("following", middlewareLoggedIn(handlerFollowing))
+	cmds.register("unfollow", middlewareLoggedIn(handlerUnfollow))
+	cmds.register("browse", middlewareLoggedIn(handlerBrowse))
 
 	osArgs := os.Args
 	if len(osArgs) < 2 {
